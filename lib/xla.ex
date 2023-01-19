@@ -46,7 +46,7 @@ defmodule XLA do
   defp xla_target() do
     target = System.get_env("XLA_TARGET", "cpu")
 
-    supported_xla_targets = ["cpu", "cuda", "rocm", "tpu", "cuda111", "cuda114", "cuda118"]
+    supported_xla_targets = ["cpu", "cuda", "rocm", "tpu", "cuda111", "cuda114", "cuda118", "avx", "avx2"]
 
     unless target in supported_xla_targets do
       listing = supported_xla_targets |> Enum.map(&inspect/1) |> Enum.join(", ")
@@ -67,11 +67,16 @@ defmodule XLA do
 
   @doc false
   def make_env() do
+    os = target_triplet() |> elem(1)
     bazel_build_flags_accelerator =
-      case xla_target() do
-        "cuda" <> _ -> ["--config=cuda"]
-        "rocm" <> _ -> ["--config=rocm", "--action_env=HIP_PLATFORM=hcc"]
-        "tpu" <> _ -> ["--config=tpu"]
+      case {xla_target(), os} do
+        {"cuda" <> _, _} -> ["--config=cuda"]
+        {"rocm" <> _, _} -> ["--config=rocm", "--action_env=HIP_PLATFORM=hcc"]
+        {"tpu" <> _, _} -> ["--config=tpu"]
+        {"avx2" <> _, "linux"} -> ["--config=avx2_linux"]
+        {"avx2" <> _, "windows"} -> ["--config=avx2_win"]
+        {"avx" <> _, "linux"} -> ["--config=avx_linux"]
+        {"avx" <> _, "windows"} -> ["--config=avx_win"]
         _ -> []
       end
 
